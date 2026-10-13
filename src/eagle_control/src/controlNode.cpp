@@ -1,6 +1,7 @@
 #include "canInterface.hpp"
 #include <yaml-cpp/yaml.h>
 #include <iostream>
+#include <ctime>
 
 #include <cstdint>
 
@@ -49,12 +50,22 @@ void sendCommand(float throttle, float brake, bool missionFinished) {
 
 int main() {
 
+    int startTime = time(0);
+
     while (true) {
         float speed = getSpeed();
 
         std::cout << "speed: " << speed << std::endl;
 
-        sendCommand(1, 0, false);
+        if (time(0) > startTime + 4.6) {
+            if (speed == 0) {
+                sendCommand(0, 0, true);
+            } else {
+                sendCommand(0, 1, false);
+            }
+        } else {
+            sendCommand(1, 0, false);
+        }
     }
 
     return 0;
