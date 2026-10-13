@@ -5,7 +5,7 @@
 
 class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with parent rclcpp
     public:
-        CenterlineNode() : Node("centerlineNode") { //Constructor
+        CenterlineNode() : Node("CenterlineNode") { //Constructor
             coneSubscriber = create_subscription<eagle_msgs::msg::ConeArray>( //iSCRIVITI E CLICCA LA CAMPANELLINA con type di dato "ConeArray" ( qjello di msg insomma)
                 "/perception/cones", //Nome del topic al quale iscriversi
                 10, //Maz Queue
@@ -14,6 +14,11 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
                     this, //Eseguila nell'istanza che l'ha chiamata ( = a js )
                     std::placeholders::_1 //Usa quello che ti arriva dalla subscription
                 )
+            );
+
+            pathPublisher = create_publisher<nav_msgs::msg::Path>(
+                "/planning/centerline",
+                10
             );
         }
     private:
@@ -56,16 +61,12 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
             }
 
             //pubblico tutto
-            const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr publisher = create_publisher<nav_msgs::msg::Path>(
-                "/planning/centerline",
-                10
-            );
-
-            publisher->publish(path);
+            pathPublisher->publish(path);
         }
 
-    //Creando lo SmartPointer per recuperare il Cone Array
+    //Creando lo SmartPointer per recuperare e pubblicare il Cone Array
     rclcpp::Subscription<eagle_msgs::msg::ConeArray>::SharedPtr coneSubscriber;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pathPublisher;
 };
 
 int main(int argc, char **argv) {
