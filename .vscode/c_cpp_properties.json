@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++17",
+            "compileCommands": [
+                "/home/eagle/ws/build/eagle_control/compile_commands.json"
+            ]
+        }
+    ],
+    "version": 4
+}

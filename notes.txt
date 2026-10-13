@@ -19,4 +19,4 @@ sudo ip link set up vcan0
 test: ip link show vcan0
 
 //CHECK CONES IN CONSOLE
-ros2 topic echo /perception/cones
+ros2 topic echo /perception/cones --once

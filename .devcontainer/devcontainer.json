@@ -6,7 +6,8 @@
     "workspaceFolder": "/home/eagle/ws",
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/eagle/ws,type=bind",
     "runArgs": [
-        "--network=host"
+        "--network=host",
+        "--cap-add=NET_ADMIN"
     ],
     "remoteUser": "eagle"
 }
