@@ -5,7 +5,6 @@ from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 import os
 
-
 def generate_launch_description():
     simDir = get_package_share_directory("eagle_sim")
 
@@ -22,7 +21,15 @@ def generate_launch_description():
         output="screen",
     )
 
+    controlNode = Node(
+        package="eagle_control",
+        executable="controlNode",
+        name="controlNode",
+        output="screen",
+    )
+
     return LaunchDescription([
         simLaunch,
         centerlineNode,
+        controlNode,
     ])

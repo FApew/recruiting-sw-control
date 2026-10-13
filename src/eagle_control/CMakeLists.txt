@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(eagle_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 add_executable(centerlineNode
     src/centerlineNode.cpp
@@ -33,6 +34,8 @@ ament_target_dependencies(controlNode
     geometry_msgs
     eagle_msgs
 )
+
+target_link_libraries(controlNode yaml-cpp)
 
 target_include_directories(controlNode PRIVATE
     src/canInterface
