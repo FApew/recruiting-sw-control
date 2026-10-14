@@ -90,23 +90,26 @@ class ControlNode : public rclcpp::Node {
         void mainLoop() {
             if (!havePath) return;
 
-            float target;
+            float target = 9;
 
             float speed = getSpeed();
             float dt = std::chrono::duration<float>(std::chrono::steady_clock::now() - pt).count();
 
-            if (lastestPath.poses.back().pose.position.x < 17) {
+            /*if (lastestPath.poses.back().pose.position.x < 17) {
                 if (speed == 0) {
                     sendCommand(0, 0, true);
+                    controlTimer->cancel();
+                    rclcpp::shutdown();
                 } else {
                     target = 0;
                 }
             } else {
-                target = 40;
-            }
+                target = 10;
+            }*/
 
             float PIDout = pid.getPIDoutput(target, speed, dt);
             std::cout << "PIDout: " << PIDout << std::endl;
+            std::cout << "Speed: " << speed << std::endl;
 
             float throttle = PIDout > 0 ? PIDout : 0;
             float brake = PIDout < 0 ? -PIDout : 0;

@@ -23,12 +23,14 @@ float PIDcontroller::getPIDoutput(const float target, const float current, const
 
 void PIDcontroller::updateError(const float currentError, const float dt) {
     if (!firstOutput) {
-        iE += currentError * (dt/1000);
-        dE = (currentError - pE) / (dt/1000);
+        iE += currentError * dt;
+        dE = (currentError - pE) / dt;
     } else {
         dE = 0;
         firstOutput = false;
     }
+
+    pE = currentError;
 }
 
 void PIDcontroller::reset() {

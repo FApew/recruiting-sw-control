@@ -2,8 +2,8 @@ can:
   VEH_SPEED: 0x200
   AS_CMD: 0x100
 pid:
-  KP: 0.05
-  KI: 0.002
-  KD: 0.005
+  KP: 0.35
+  KI: 0.006
+  KD: 0.03
   MAX: 1
   MIN: -1
