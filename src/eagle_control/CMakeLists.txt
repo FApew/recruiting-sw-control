@@ -19,6 +19,7 @@ add_executable(centerlineNode
 add_executable(controlNode
     src/controlNode.cpp
     src/canInterface/canInterface.cpp
+    src/PIDcontroller/PIDcontroller.cpp
 )
 
 ament_target_dependencies(centerlineNode
@@ -39,6 +40,7 @@ target_link_libraries(controlNode yaml-cpp)
 
 target_include_directories(controlNode PRIVATE
     src/canInterface
+    src/PIDcontroller
 )
 
 install(TARGETS

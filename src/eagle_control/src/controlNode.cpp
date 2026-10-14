@@ -1,4 +1,5 @@
 #include "canInterface.hpp"
+#include "PIDcontroller.hpp"
 #include <yaml-cpp/yaml.h>
 
 #include <iostream>
@@ -16,6 +17,11 @@ YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
 struct config {
     unsigned int VEH_SPEED = configFile["can"]["VEH_SPEED"].as<unsigned int>();
     unsigned int AS_CMD = configFile["can"]["AS_CMD"].as<unsigned int>();
+    float KP = configFile["pid"]["KP"].as<float>();
+    float KI = configFile["pid"]["KI"].as<float>();
+    float KD = configFile["pid"]["KD"].as<float>();
+    float MIN = configFile["pid"]["MIN"].as<float>();
+    float MAX = configFile["pid"]["MAX"].as<float>();
 } config;
 
 CanInterface can("vcan0");
@@ -54,7 +60,8 @@ void sendCommand(float throttle, float brake, bool missionFinished) {
 
 class ControlNode : public rclcpp::Node {
     public:
-        ControlNode() : Node("ControlNode") {
+        ControlNode() : Node("ControlNode"),
+        pid(config.KP, config.KI, config.KD, config.MIN, config.MAX) {
             pathSub = create_subscription<nav_msgs::msg::Path>(
                 "/planning/centerline",
                 10,
@@ -71,14 +78,11 @@ class ControlNode : public rclcpp::Node {
                 std::chrono::milliseconds(10),
                 std::bind(&ControlNode::mainLoop, this)
             );
+
+            pt = std::chrono::steady_clock::now();
         }
     private: 
         void getPath(const nav_msgs::msg::Path::SharedPtr msg) {
-            /*for (size_t i = 0; i < msg->poses.size(); i++) {
-                float x = msg->poses[i].pose.position.x;
-                //std::cout << "Point " << i << ": " << x << std::endl;
-            }*/
-
             lastestPath = *msg;
             havePath = true;
         }
@@ -86,27 +90,41 @@ class ControlNode : public rclcpp::Node {
         void mainLoop() {
             if (!havePath) return;
 
-            float speed = getSpeed();
+            float target;
 
-            //std::cout << "speed: " << speed << std::endl;
+            float speed = getSpeed();
+            float dt = std::chrono::duration<float>(std::chrono::steady_clock::now() - pt).count();
 
             if (lastestPath.poses.back().pose.position.x < 17) {
                 if (speed == 0) {
                     sendCommand(0, 0, true);
                 } else {
-                    sendCommand(0, 1, false);
+                    target = 0;
                 }
             } else {
-                sendCommand(1, 0, false);
+                target = 40;
             }
+
+            float PIDout = pid.getPIDoutput(target, speed, dt);
+            std::cout << "PIDout: " << PIDout << std::endl;
+
+            float throttle = PIDout > 0 ? PIDout : 0;
+            float brake = PIDout < 0 ? -PIDout : 0;
+
+            sendCommand(throttle, brake, false);
+
+            pt = std::chrono::steady_clock::now();
         }
 
         rclcpp::TimerBase::SharedPtr controlTimer;
+
+        std::chrono::steady_clock::time_point pt;
 
         nav_msgs::msg::Path lastestPath;
         bool havePath;
 
         rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr pathSub;
+        PIDcontroller pid;
 };
 
 int main(int argc, char **argv) {
