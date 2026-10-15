@@ -1,4 +1,4 @@
-#include "PIDcontroller.hpp"
+#include "eagle_control/PIDcontroller.hpp"
 #include <algorithm>
 
 PIDcontroller::PIDcontroller(const float Kp, const float Ki, const float Kd, const float Min, const float Max) {

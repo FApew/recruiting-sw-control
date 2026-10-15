@@ -20,3 +20,7 @@ test: ip link show vcan0
 
 //CHECK CONES IN CONSOLE
 ros2 topic echo /perception/cones --once
+
+//Cantools usage
+python3 -m pip install cantools
+python3 -m cantools generate_c_source can/eagle_task.dbc

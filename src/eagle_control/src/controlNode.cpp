@@ -1,6 +1,8 @@
-#include "canInterface.hpp"
-#include "PIDcontroller.hpp"
+#include "eagle_control/canInterface.hpp"
+#include "eagle_control/PIDcontroller.hpp"
+#include "eagle_control/eagle_task.h"
 #include <yaml-cpp/yaml.h>
+
 
 #include <iostream>
 #include <ctime>
@@ -30,32 +32,53 @@ CanInterface can("vcan0");
 
 float getSpeed() {
     struct can_frame frame{};
+
     do {
         can.receiveFrame(frame);
-    } while (frame.can_id != config.VEH_SPEED);
+    } while (frame.can_id != EAGLE_TASK_VEH_SPEED_FRAME_ID);
 
-    //Leggo e unisco i primi 2 byte, dove c'è la speed moltiplicata per 0.01
-    float rawSpeed = static_cast<uint16_t>(frame.data[0]) | (static_cast<uint16_t>(frame.data[1]) << 8);
+    struct eagle_task_veh_speed_t decoded{};
 
-    return rawSpeed * 0.01;
+    const int result = eagle_task_veh_speed_unpack(
+        &decoded,
+        frame.data,
+        frame.can_dlc
+    );
+
+    if (result < 0) {
+        return 0.0f;
+    }
+
+    return static_cast<float>(
+        eagle_task_veh_speed_vehicle_speed_decode(
+            decoded.vehicle_speed
+        )
+    );
 }
 
 void sendCommand(float throttle, float brake, bool missionFinished) {
+    struct eagle_task_as_cmd_t command{};
+
+    command.throttle_req = eagle_task_as_cmd_throttle_req_encode(throttle);
+
+    command.brake_req = eagle_task_as_cmd_brake_req_encode(brake);
+
+    command.mission_finished = missionFinished ? 1 : 0;
+
     struct can_frame frame{};
+    frame.can_id = EAGLE_TASK_AS_CMD_FRAME_ID;
+    frame.can_dlc = EAGLE_TASK_AS_CMD_LENGTH;
 
-    frame.can_id = config.AS_CMD;
-    frame.can_dlc = 8;
+    const int result = eagle_task_as_cmd_pack(
+        frame.data,
+        &command,
+        frame.can_dlc
+    );
 
-    const uint16_t rawThrottle = static_cast<uint16_t>(throttle * 1000.0f);
-    const uint16_t rawBrake = static_cast<uint16_t>(brake * 1000.0f);
-
-    frame.data[0] = rawThrottle & 0xFF;
-    frame.data[1] = (rawThrottle >> 8) & 0xFF;
-
-    frame.data[2] = rawBrake & 0xFF;
-    frame.data[3] = (rawBrake >> 8) & 0xFF;
-
-    frame.data[4] = missionFinished ? 1 : 0;
+    if (result < 0) {
+        RCLCPP_ERROR(rclcpp::get_logger("ControlNode"), "Failed to encode AS_CMD CAN frame");
+        return;
+    }
 
     can.sendFrame(frame);
 }
@@ -92,6 +115,15 @@ class ControlNode : public rclcpp::Node {
         void mainLoop() {
             if (!havePath) return;
 
+            if (
+                lastestPath.poses.empty() ||
+                (lastestPath.poses.back().pose.position.z == 1 &&
+                lastestPath.poses.back().pose.position.x < config.STOP_DISTANCE)
+            ) { 
+                stopRequested = true; 
+                pid.reset();
+            }
+
             float target = stopRequested ? 0 : 40;
 
             float speed = getSpeed();
@@ -103,12 +135,6 @@ class ControlNode : public rclcpp::Node {
             float brake = PIDout < 0 ? -PIDout : 0;
 
             sendCommand(throttle, brake, false);
-
-            if (
-                (lastestPath.poses.back().pose.position.z == 1 &&
-                lastestPath.poses.back().pose.position.x < config.STOP_DISTANCE) ||
-                lastestPath.poses.empty()
-            ) { stopRequested = true;}
 
             if (speed < config.STOP_THRESHOLD && stopRequested) {
                 sendCommand(0, 0, true);

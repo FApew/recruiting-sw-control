@@ -18,8 +18,8 @@ add_executable(centerlineNode
 
 add_executable(controlNode
     src/controlNode.cpp
-    src/canInterface/canInterface.cpp
-    src/PIDcontroller/PIDcontroller.cpp
+    src/canInterface.cpp
+    src/PIDcontroller.cpp
 )
 
 ament_target_dependencies(centerlineNode
@@ -36,11 +36,14 @@ ament_target_dependencies(controlNode
     eagle_msgs
 )
 
+target_sources(controlNode PRIVATE
+    src/generated/eagle_task.c
+)
+
 target_link_libraries(controlNode yaml-cpp)
 
 target_include_directories(controlNode PRIVATE
-    src/canInterface
-    src/PIDcontroller
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 install(TARGETS

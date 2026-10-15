@@ -1,4 +1,4 @@
-#include "canInterface.hpp"
+#include "eagle_control/canInterface.hpp"
 #include <string>
 
 #include <cerrno>
