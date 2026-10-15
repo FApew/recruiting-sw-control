@@ -2,8 +2,10 @@ can:
   VEH_SPEED: 0x200
   AS_CMD: 0x100
 pid:
-  KP: 0.35
-  KI: 0.006
-  KD: 0.03
+  KP: 0.3
+  KI: 0.0001
+  KD: 0.0005
   MAX: 1
   MIN: -1
+control:
+  STOP_DISTANCE: 25

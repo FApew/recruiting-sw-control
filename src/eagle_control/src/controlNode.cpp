@@ -22,6 +22,7 @@ struct config {
     float KD = configFile["pid"]["KD"].as<float>();
     float MIN = configFile["pid"]["MIN"].as<float>();
     float MAX = configFile["pid"]["MAX"].as<float>();
+    float STOP_DISTANCE = configFile["control"]["STOP_DISTANCE"].as<float>();
 } config;
 
 CanInterface can("vcan0");
@@ -79,7 +80,7 @@ class ControlNode : public rclcpp::Node {
                 std::bind(&ControlNode::mainLoop, this)
             );
 
-            pt = std::chrono::steady_clock::now();
+            pt = startTime = std::chrono::steady_clock::now();
         }
     private: 
         void getPath(const nav_msgs::msg::Path::SharedPtr msg) {
@@ -90,26 +91,28 @@ class ControlNode : public rclcpp::Node {
         void mainLoop() {
             if (!havePath) return;
 
-            float target = 9;
+            float target;
 
             float speed = getSpeed();
             float dt = std::chrono::duration<float>(std::chrono::steady_clock::now() - pt).count();
 
-            /*if (lastestPath.poses.back().pose.position.x < 17) {
+            if ((lastestPath.poses.back().pose.position.z == 1 &&
+            lastestPath.poses.back().pose.position.x < config.STOP_DISTANCE) ||
+            lastestPath.poses.empty()) {
+
                 if (speed == 0) {
                     sendCommand(0, 0, true);
+                    std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
                     controlTimer->cancel();
                     rclcpp::shutdown();
                 } else {
                     target = 0;
                 }
             } else {
-                target = 10;
-            }*/
+                target = 40;
+            }
 
             float PIDout = pid.getPIDoutput(target, speed, dt);
-            std::cout << "PIDout: " << PIDout << std::endl;
-            std::cout << "Speed: " << speed << std::endl;
 
             float throttle = PIDout > 0 ? PIDout : 0;
             float brake = PIDout < 0 ? -PIDout : 0;
@@ -122,6 +125,7 @@ class ControlNode : public rclcpp::Node {
         rclcpp::TimerBase::SharedPtr controlTimer;
 
         std::chrono::steady_clock::time_point pt;
+        std::chrono::steady_clock::time_point startTime;
 
         nav_msgs::msg::Path lastestPath;
         bool havePath;

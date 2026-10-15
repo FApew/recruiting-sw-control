@@ -27,6 +27,8 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
         ) {
             //Vettori conententi oggetti di tipo Cone per dividerli dx e sx ( ODIO LA SINTASSI :) )
             std::vector<eagle_msgs::msg::Cone> leftCones, rightCones;
+            
+            std::vector<eagle_msgs::msg::Cone> firstOrangeCones;
 
             //Array da sputare fuori ogni callback
             nav_msgs::msg::Path path;
@@ -41,6 +43,8 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
                     rightCones.push_back(cone);
                 } else if (cone.color == eagle_msgs::msg::Cone::BLUE) {
                     leftCones.push_back(cone);
+                } else if (cone.color == eagle_msgs::msg::Cone::ORANGE_BIG) {
+                    firstOrangeCones.push_back(cone);
                 }
             }
        
@@ -58,6 +62,19 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
 
                     path.poses.push_back(poseStamped);
                 }
+            }
+
+            if (firstOrangeCones.size() >= 2) {
+                geometry_msgs::msg::PoseStamped poseStamped;
+                poseStamped.header = msg->header;
+
+                poseStamped.pose.position.x = (float) (firstOrangeCones[0].position.x + firstOrangeCones[1].position.x) / 2;
+                poseStamped.pose.position.y = (float) (firstOrangeCones[0].position.y + firstOrangeCones[1].position.y) / 2;
+                poseStamped.pose.position.z = 1;
+
+                poseStamped.pose.orientation.w = 1;
+
+                path.poses.push_back(poseStamped);
             }
 
             //pubblico tutto
