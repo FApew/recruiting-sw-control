@@ -23,6 +23,7 @@ struct config {
     float MIN = configFile["pid"]["MIN"].as<float>();
     float MAX = configFile["pid"]["MAX"].as<float>();
     float STOP_DISTANCE = configFile["control"]["STOP_DISTANCE"].as<float>();
+    float STOP_THRESHOLD = configFile["control"]["STOP_THRESHOLD"].as<float>();
 } config;
 
 CanInterface can("vcan0");
@@ -73,7 +74,7 @@ class ControlNode : public rclcpp::Node {
                 )
             );
 
-            havePath = false;
+            havePath = stopRequested = false;
 
             controlTimer = create_wall_timer(
                 std::chrono::milliseconds(10),
@@ -91,26 +92,10 @@ class ControlNode : public rclcpp::Node {
         void mainLoop() {
             if (!havePath) return;
 
-            float target;
+            float target = stopRequested ? 0 : 40;
 
             float speed = getSpeed();
             float dt = std::chrono::duration<float>(std::chrono::steady_clock::now() - pt).count();
-
-            if ((lastestPath.poses.back().pose.position.z == 1 &&
-            lastestPath.poses.back().pose.position.x < config.STOP_DISTANCE) ||
-            lastestPath.poses.empty()) {
-
-                if (speed == 0) {
-                    sendCommand(0, 0, true);
-                    std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
-                    controlTimer->cancel();
-                    rclcpp::shutdown();
-                } else {
-                    target = 0;
-                }
-            } else {
-                target = 40;
-            }
 
             float PIDout = pid.getPIDoutput(target, speed, dt);
 
@@ -118,6 +103,19 @@ class ControlNode : public rclcpp::Node {
             float brake = PIDout < 0 ? -PIDout : 0;
 
             sendCommand(throttle, brake, false);
+
+            if (
+                (lastestPath.poses.back().pose.position.z == 1 &&
+                lastestPath.poses.back().pose.position.x < config.STOP_DISTANCE) ||
+                lastestPath.poses.empty()
+            ) { stopRequested = true;}
+
+            if (speed < config.STOP_THRESHOLD && stopRequested) {
+                sendCommand(0, 0, true);
+                std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
+                controlTimer->cancel();
+                rclcpp::shutdown();
+            }
 
             pt = std::chrono::steady_clock::now();
         }
@@ -128,7 +126,7 @@ class ControlNode : public rclcpp::Node {
         std::chrono::steady_clock::time_point startTime;
 
         nav_msgs::msg::Path lastestPath;
-        bool havePath;
+        bool havePath, stopRequested;
 
         rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr pathSub;
         PIDcontroller pid;

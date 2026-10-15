@@ -9,3 +9,4 @@ pid:
   MIN: -1
 control:
   STOP_DISTANCE: 25
+  STOP_THRESHOLD: 0.05
