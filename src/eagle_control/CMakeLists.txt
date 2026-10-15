@@ -20,6 +20,7 @@ add_executable(controlNode
     src/controlNode.cpp
     src/canInterface.cpp
     src/PIDcontroller.cpp
+    src/generated/eagle_task.c
 )
 
 ament_target_dependencies(centerlineNode

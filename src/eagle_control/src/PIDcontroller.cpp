@@ -22,7 +22,7 @@ float PIDcontroller::getPIDoutput(const float target, const float current, const
 }
 
 void PIDcontroller::updateError(const float currentError, const float dt) {
-    if (!firstOutput) {
+    if (!firstOutput && dt > 0) {
         iE += currentError * dt;
         dE = (currentError - pE) / dt;
     } else {

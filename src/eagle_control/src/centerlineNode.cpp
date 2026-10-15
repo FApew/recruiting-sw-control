@@ -28,7 +28,7 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
             //Vettori conententi oggetti di tipo Cone per dividerli dx e sx ( ODIO LA SINTASSI :) )
             std::vector<eagle_msgs::msg::Cone> leftCones, rightCones;
             
-            std::vector<eagle_msgs::msg::Cone> firstOrangeCones;
+            std::vector<eagle_msgs::msg::Cone> OrangeCones;
 
             //Array da sputare fuori ogni callback
             nav_msgs::msg::Path path;
@@ -44,7 +44,7 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
                 } else if (cone.color == eagle_msgs::msg::Cone::BLUE) {
                     leftCones.push_back(cone);
                 } else if (cone.color == eagle_msgs::msg::Cone::ORANGE_BIG) {
-                    firstOrangeCones.push_back(cone);
+                    OrangeCones.push_back(cone);
                 }
             }
        
@@ -64,17 +64,19 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
                 }
             }
 
-            if (firstOrangeCones.size() >= 2) {
-                geometry_msgs::msg::PoseStamped poseStamped;
-                poseStamped.header = msg->header;
+            if (OrangeCones.size() % 2 == 0) {
+                for (size_t i = 0; i < OrangeCones.size(); i+=2) {
+                    geometry_msgs::msg::PoseStamped poseStamped;
+                    poseStamped.header = msg->header;
 
-                poseStamped.pose.position.x = (float) (firstOrangeCones[0].position.x + firstOrangeCones[1].position.x) / 2;
-                poseStamped.pose.position.y = (float) (firstOrangeCones[0].position.y + firstOrangeCones[1].position.y) / 2;
-                poseStamped.pose.position.z = 1;
+                    poseStamped.pose.position.x = (float) (OrangeCones[i].position.x + OrangeCones[i+1].position.x) / 2;
+                    poseStamped.pose.position.y = (float) (OrangeCones[i].position.y + OrangeCones[i+1].position.y) / 2;
+                    poseStamped.pose.position.z = 1;
 
-                poseStamped.pose.orientation.w = 1;
+                    poseStamped.pose.orientation.w = 1;
 
-                path.poses.push_back(poseStamped);
+                    path.poses.push_back(poseStamped);
+                }                
             }
 
             //pubblico tutto
@@ -90,7 +92,7 @@ int main(int argc, char **argv) {
     rclcpp::init(argc, argv); //Va beh faccio partire ros2
 
     //Creo il puntatore che contiene il coso che ho creato prima
-    std::shared_ptr<CenterlineNode> node = std::make_shared<CenterlineNode>();
+    const std::shared_ptr<CenterlineNode> node = std::make_shared<CenterlineNode>();
 
     //Lo tengo attivo per ascoltare eventi nuovi ( La subscription di prima )
     //Lo butto dentro a un event loop insomma tipo addEventListener ma più figo
