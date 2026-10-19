@@ -1,18 +1,26 @@
 #include <vector>
-#include <rclcpp/rclcpp.hpp> //ROS 2 C++ Library
-#include <eagle_msgs/msg/cone_array.hpp> //Custom cone array Include
+#include <rclcpp/rclcpp.hpp>
+#include <eagle_msgs/msg/cone_array.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <yaml-cpp/yaml.h>
+#include <cmath>
 
-class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with parent rclcpp
+YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
+
+struct config {
+    const float CONES_MAX_X_OFFSET = configFile["path"]["CONES_MAX_X_OFFSET"].as<float>();
+} config;
+
+class CenterlineNode : public rclcpp::Node {
     public:
-        CenterlineNode() : Node("CenterlineNode") { //Constructor
-            coneSubscriber = create_subscription<eagle_msgs::msg::ConeArray>( //iSCRIVITI E CLICCA LA CAMPANELLINA con type di dato "ConeArray" ( qjello di msg insomma)
-                "/perception/cones", //Nome del topic al quale iscriversi
-                10, //Maz Queue
+        CenterlineNode() : Node("CenterlineNode") {
+            coneSubscriber = create_subscription<eagle_msgs::msg::ConeArray>(
+                "/perception/cones",
+                10,
                 std::bind(
-                    &CenterlineNode::processCones, //Quale funzione ( come callback javascript passo la funziona non la eseguo ( uso & ))
-                    this, //Eseguila nell'istanza che l'ha chiamata ( = a js )
-                    std::placeholders::_1 //Usa quello che ti arriva dalla subscription
+                    &CenterlineNode::processCones,
+                    this,
+                    std::placeholders::_1
                 )
             );
 
@@ -23,21 +31,15 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
         }
     private:
         void processCones(
-            const eagle_msgs::msg::ConeArray::SharedPtr msg //Argoento con il msg
+            const eagle_msgs::msg::ConeArray::SharedPtr msg
         ) {
-            //Vettori conententi oggetti di tipo Cone per dividerli dx e sx ( ODIO LA SINTASSI :) )
-            std::vector<eagle_msgs::msg::Cone> leftCones, rightCones;
-            
-            std::vector<eagle_msgs::msg::Cone> OrangeCones;
+            std::vector<eagle_msgs::msg::Cone> leftCones, rightCones, OrangeCones;
 
-            //Array da sputare fuori ogni callback
             nav_msgs::msg::Path path;
-
             path.header = msg->header;
 
-            //Creo gli array dx e sx per comodità ( di base visto che il circuito è dritto non serve neanche separare dx e sx ma si sa mai )
             for (size_t i = 0; i < msg->cones.size(); i++) {
-                const eagle_msgs::msg::Cone &cone = msg->cones[i]; //Grabbo il cono i
+                const eagle_msgs::msg::Cone &cone = msg->cones[i];
 
                 if (cone.color == eagle_msgs::msg::Cone::YELLOW) {
                     rightCones.push_back(cone);
@@ -48,19 +50,25 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
                 }
             }
        
+            bool pair = false;
             for (size_t i = 0; i < leftCones.size(); i++) {
-                if (i < rightCones.size()) { //Controllo che al i cono sx ci sia l' i cono dx se no BOOM
+                pair = false;
 
-                    geometry_msgs::msg::PoseStamped poseStamped; //Documentazione stupenda
-                    poseStamped.header = msg->header;
+                for (size_t j = 0; j < rightCones.size() && !pair; j++) {
+                    if (std::fabs(leftCones[i].position.x - rightCones[j].position.x) < config.CONES_MAX_X_OFFSET) {
+                        geometry_msgs::msg::PoseStamped poseStamped;
+                        poseStamped.header = msg->header;
 
-                    poseStamped.pose.position.x = (float) (leftCones[i].position.x + rightCones[i].position.x) / 2;
-                    poseStamped.pose.position.y = (float) (leftCones[i].position.y + rightCones[i].position.y) / 2;
-                    poseStamped.pose.position.z = 0;
+                        poseStamped.pose.position.x = leftCones[i].position.x;
+                        poseStamped.pose.position.y = (float) (leftCones[i].position.y + rightCones[j].position.y) / 2;
+                        poseStamped.pose.position.z = 0;
 
-                    poseStamped.pose.orientation.w = 1;
+                        poseStamped.pose.orientation.w = 1;
 
-                    path.poses.push_back(poseStamped);
+                        path.poses.push_back(poseStamped);
+
+                        pair = true;
+                    }
                 }
             }
 
@@ -79,28 +87,21 @@ class CenterlineNode : public rclcpp::Node { //Class "CenterlineNode" with paren
                 }                
             }
 
-            //pubblico tutto
             pathPublisher->publish(path);
         }
 
-    //Creando lo SmartPointer per recuperare e pubblicare il Cone Array
     rclcpp::Subscription<eagle_msgs::msg::ConeArray>::SharedPtr coneSubscriber;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pathPublisher;
 };
 
 int main(int argc, char **argv) {
-    rclcpp::init(argc, argv); //Va beh faccio partire ros2
+    rclcpp::init(argc, argv);
 
-    //Creo il puntatore che contiene il coso che ho creato prima
     const std::shared_ptr<CenterlineNode> node = std::make_shared<CenterlineNode>();
 
-    //Lo tengo attivo per ascoltare eventi nuovi ( La subscription di prima )
-    //Lo butto dentro a un event loop insomma tipo addEventListener ma più figo
     rclcpp::spin(node);
 
-    //Ferma tutto stacca
     rclcpp::shutdown();
 
-    //Lui c'è sempre mai se ne va
     return 0;
 }

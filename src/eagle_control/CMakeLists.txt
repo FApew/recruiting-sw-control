@@ -42,6 +42,7 @@ target_sources(controlNode PRIVATE
 )
 
 target_link_libraries(controlNode yaml-cpp)
+target_link_libraries(centerlineNode yaml-cpp)
 
 target_include_directories(controlNode PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include

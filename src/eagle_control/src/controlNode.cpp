@@ -14,6 +14,11 @@
 #include <linux/can.h>
 #include <nav_msgs/msg/path.hpp>
 
+typedef struct LastestPath {
+    nav_msgs::msg::Path path;
+    std::chrono::steady_clock::time_point age;
+} LastestPath;
+
 YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
 
 struct config {
@@ -29,6 +34,7 @@ struct config {
     const float TARGET_SPEED = configFile["control"]["TARGET_SPEED"].as<float>();
     const int CLOCK_MS = configFile["control"]["CLOCK_MS"].as<int>();
     const int MAX_CAN_TRIES = configFile["control"]["MAX_CAN_TRIES"].as<int>();
+    const int MAX_PATH_AGE = configFile["control"]["MAX_PATH_AGE"].as<int>();
 } config;
 
 CanInterface can("vcan0");
@@ -106,21 +112,24 @@ class ControlNode : public rclcpp::Node {
         }
     private: 
         void getPath(const nav_msgs::msg::Path::SharedPtr msg) {
-            lastestPath = *msg;
-            havePath = true;
+            if (!msg->poses.empty()) {
+                lastestPath.path = *msg;
+                havePath = true;
+                lastestPath.age = std::chrono::steady_clock::now();
+            }
         }
 
         void mainLoop() {
             if (!havePath) return;
 
-            if (lastestPath.poses.empty()) {
+            if (std::chrono::duration<float>(std::chrono::steady_clock::now() - lastestPath.age).count()*1000 > config.MAX_PATH_AGE) {
                 std::cout << "-------Path error (returned path is empty)-------" << std::endl;
 
                 controlTimer->cancel();
                 rclcpp::shutdown();
 
-            } else if (lastestPath.poses.size() > 1) {
-                geometry_msgs::msg::PoseStamped secondToLastPose = lastestPath.poses[(int) lastestPath.poses.size() - 2];
+            } else if (lastestPath.path.poses.size() > 1) {
+                geometry_msgs::msg::PoseStamped secondToLastPose = lastestPath.path.poses[(int) lastestPath.path.poses.size() - 2];
 
                 if (
                     secondToLastPose.pose.position.z == 1 &&
@@ -155,7 +164,7 @@ class ControlNode : public rclcpp::Node {
             if (
                 speed < config.STOP_THRESHOLD && 
                 stopRequested &&
-                lastestPath.poses.back().pose.position.z == 1
+                lastestPath.path.poses.back().pose.position.z == 1
             ) {
                 sendCommand(0, 0, true);
                 std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
@@ -171,7 +180,7 @@ class ControlNode : public rclcpp::Node {
         std::chrono::steady_clock::time_point pt;
         std::chrono::steady_clock::time_point startTime;
 
-        nav_msgs::msg::Path lastestPath;
+        LastestPath lastestPath;
         bool havePath, stopRequested, stopDetected;
 
         rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr pathSub;

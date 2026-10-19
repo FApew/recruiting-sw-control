@@ -30,14 +30,13 @@ Now open a terminal in VS Code and clone the repository from **GitHub** by using
 mkdir -p ~/<NAME OF YOUR FOLDER>
 
 cd ~/<NAME OF YOUR FOLDER>
-git clone [https://github.com/FApew/recruiting-sw-control](https://github.com/FApew/recruiting-sw-control)
-cd recruiting-sw-control
+git clone https://github.com/FApew/recruiting-sw-control
 ```
 > Alternatively, use VS Code integrated feature to clone the repository and enter its URL.
 
 ## 4. Open the Dev Container
 
-Once the repository is successfully cloned, press `Ctrl + Shift + P` and run `Dev Containers: Reopen in Container` to open the project inside Docker Container in VS Code.
+Once the repository is successfully cloned, open it with VS Code and then press `Ctrl + Shift + P` to run `Dev Containers: Reopen in Container` so you can open the project inside Docker Container inside VS Code.
 
 Wait for Docker to build the image and start the container. The first build may take a few minutes.
 
@@ -53,11 +52,7 @@ Run the following commands in the VS Code terminal inside the container:
 
 ```
 sudo modprobe vcan
-
-if ! ip link show vcan0 >/dev/null 2>&1; then
-    sudo ip link add dev vcan0 type vcan
-fi
-
+sudo ip link add dev vcan0 type vcan
 sudo ip link set up vcan0
 ```
 
@@ -69,7 +64,7 @@ ip link show vcan0
 
 If `vcan0` already exists, the commands will reuse it instead of trying to create it again.
 
-> The vCAN interface does not necessarily survive a WSL restart. If you restart WSL and get `No such device` errors, run the commands again. If `modprobe vcan` fails, check whether the WSL kernel supports the vCAN module.
+> The vCAN interface does not necessarily survive a WSL restart. If you restart WSL and get `No such device` errors, run the commands again.
 
 ## 6. Run the Simulation
 
