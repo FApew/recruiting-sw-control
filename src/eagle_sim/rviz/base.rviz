@@ -1,111 +1,48 @@
 Panels:
   - Class: rviz_common/Displays
-    Help Height: 70
     Name: Displays
-    Property Tree Widget:
-      Expanded: ~
-      Splitter Ratio: 0.5
-    Tree Height: 363
   - Class: rviz_common/Views
-    Expanded:
-      - /Current View1
     Name: Views
-    Splitter Ratio: 0.5
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.30000001192092896
-      Cell Size: 1
-      Class: rviz_default_plugins/Grid
-      Color: 160; 160; 164
-      Enabled: true
-      Line Style:
-        Line Width: 0.029999999329447746
-        Value: Lines
+    - Class: rviz_default_plugins/Grid
       Name: Grid
-      Normal Cell Count: 0
+      Enabled: true
+      Reference Frame: <Fixed Frame>
+      Plane Cell Count: 150
+      Cell Size: 1
+      Color: 160; 160; 164
+      Alpha: 0.3
       Offset:
         X: 40
         Y: 0
-        Z: -0.019999999552965164
-      Plane: XY
-      Plane Cell Count: 150
-      Reference Frame: <Fixed Frame>
-      Value: true
+        Z: -0.02
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
       Name: Track
-      Namespaces:
-        asphalt: true
-        cones: true
-        stop_zone: true
+      Enabled: true
       Topic:
+        Value: /sim/track
         Depth: 1
         Durability Policy: Transient Local
-        History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /sim/track
-      Value: true
+        History Policy: Keep Last
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
       Name: Vehicle
-      Namespaces:
-        vehicle: true
+      Enabled: true
       Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
         Value: /sim/vehicle_markers
-      Value: true
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        base_link:
-          Value: true
-        map:
-          Value: true
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: false
-      Show Axes: true
-      Show Names: true
-      Tree:
-        map:
-          base_link:
-            {}
-      Update Interval: 0
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 25; 255; 0
-      Enabled: true
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
-      Name: Path
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic:
         Depth: 5
         Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /planning/centerline
-      Value: true
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Show Axes: true
+      Show Arrows: false
+      Marker Scale: 1
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -116,63 +53,20 @@ Visualization Manager:
     - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Select
     - Class: rviz_default_plugins/Measure
-      Line color: 128; 128; 0
-  Transformation:
-    Current:
-      Class: rviz_default_plugins/TF
   Value: true
   Views:
     Current:
       Class: rviz_default_plugins/ThirdPersonFollower
+      Name: Current View
+      Target Frame: base_link
       Distance: 14
-      Enable Stereo Rendering:
-        Stereo Eye Separation: 0.05999999865889549
-        Stereo Focal Distance: 1
-        Swap Stereo Eyes: false
-        Value: false
+      Pitch: 0.35
+      Yaw: 3.14159
       Focal Point:
         X: 4
         Y: 0
         Z: 0
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
-      Invert Z Axis: false
-      Name: Current View
-      Near Clip Distance: 0.009999999776482582
-      Pitch: 0.27000004053115845
-      Target Frame: base_link
-      Value: ThirdPersonFollower (rviz_default_plugins)
-      Yaw: 3.1615896224975586
-    Saved:
-      - Class: rviz_default_plugins/ThirdPersonFollower
-        Distance: 14
-        Enable Stereo Rendering:
-          Stereo Eye Separation: 0.05999999865889549
-          Stereo Focal Distance: 1
-          Swap Stereo Eyes: false
-          Value: false
-        Focal Point:
-          X: 4
-          Y: 0
-          Z: 0
-        Focal Shape Fixed Size: true
-        Focal Shape Size: 0.05000000074505806
-        Invert Z Axis: false
-        Name: ThirdPersonFollower
-        Near Clip Distance: 0.009999999776482582
-        Pitch: 0.2650000751018524
-        Target Frame: base_link
-        Value: ThirdPersonFollower (rviz_default_plugins)
-        Yaw: 3.196589231491089
+      Near Clip Distance: 0.01
 Window Geometry:
-  Displays:
-    collapsed: false
-  Height: 900
-  Hide Left Dock: false
-  Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000019b0000032efc0200000002fb000000100044006900730070006c006100790073010000003b000001ec000000c700fffffffb0000000a00560069006500770073010000022d0000013c000000a000ffffff000003d70000032e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
-  Views:
-    collapsed: false
   Width: 1400
-  X: 401
-  Y: 101
+  Height: 900
