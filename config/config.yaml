@@ -2,7 +2,7 @@ can:
   VEH_SPEED: 0x200
   AS_CMD: 0x100
 pid:
-  KP: 0.3
+  KP: 0.4
   KI: 0.006
   KD: 0.03
   MAX: 1
@@ -14,5 +14,7 @@ control:
   CLOCK_MS: 10
   MAX_CAN_TRIES: 1000
   MAX_PATH_AGE: 200
+  MAX_ACCEL: 8
+  MAX_DECEL: 10.5
 path:
   CONES_MAX_X_OFFSET: 3

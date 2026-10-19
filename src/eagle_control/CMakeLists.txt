@@ -11,6 +11,7 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(eagle_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(rviz_2d_overlay_msgs REQUIRED)
 
 add_executable(centerlineNode
     src/centerlineNode.cpp
@@ -35,6 +36,7 @@ ament_target_dependencies(controlNode
     nav_msgs
     geometry_msgs
     eagle_msgs
+    rviz_2d_overlay_msgs
 )
 
 target_sources(controlNode PRIVATE
@@ -59,7 +61,7 @@ install(TARGETS
 )
 
 install(
-    DIRECTORY launch
+    DIRECTORY launch rviz
     DESTINATION share/${PROJECT_NAME}
 )
 

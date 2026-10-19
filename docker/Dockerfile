@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-humble-tf2-tools \
         ros-humble-tf-transformations \
         ros-humble-rqt-graph \
+        ros-humble-rviz-2d-overlay-plugins \
         sudo \
     && rm -rf /var/lib/apt/lists/*
 

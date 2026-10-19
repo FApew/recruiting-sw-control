@@ -34,9 +34,9 @@ git clone https://github.com/FApew/recruiting-sw-control
 ```
 > Alternatively, use VS Code integrated feature to clone the repository and enter its URL.
 
-## 4. Open the Dev Container
+## 4. Build Docker Image and Open the Dev Container
 
-Once the repository is successfully cloned, open it with VS Code and then press `Ctrl + Shift + P` to run `Dev Containers: Reopen in Container` so you can open the project inside Docker Container inside VS Code.
+Once the repository is successfully cloned, open it with VS Code and then press `Ctrl + Shift + P` to run `Dev Containers: Rebuild and Reopen in Container` so you can open the project inside Docker Container inside VS Code.
 
 Wait for Docker to build the image and start the container. The first build may take a few minutes.
 
