@@ -231,6 +231,12 @@ class ControlNode : public rclcpp::Node {
         void mainLoop() {
             if (!havePath) return;
 
+            //Mission Finished
+            if (missionFinished ) {
+                sendCommand(0, 0, true); 
+                return;
+            }
+
             //If a path becomes "too old", so no updates for more than <config.MAX_PATH_AGE>, the car stops
             if (std::chrono::duration<float>(std::chrono::steady_clock::now() - lastestPath.age).count()*1000 > config.MAX_PATH_AGE) {
                 std::cout << "-------Path error ( Path got older than: " << config.MAX_PATH_AGE << "ms )-------" << std::endl;
@@ -292,7 +298,6 @@ class ControlNode : public rclcpp::Node {
                 lastestPath.path.poses.back().pose.position.z == 1 && //Still the last 2 orange cones are visible
                 lastestPath.path.poses.size() == 1 //Car only sees the last cones, so its inside the box
             ) {
-                sendCommand(0, 0, true); //Mission Finished
                 missionFinished = true;
 
                 std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
@@ -321,12 +326,6 @@ class ControlNode : public rclcpp::Node {
 
             //Store previous loop time
             pt = std::chrono::steady_clock::now();
-
-            if (missionFinished) {
-                controlTimer->cancel();
-                rclcpp::shutdown();
-                return;
-            }
         }
 
         rclcpp::TimerBase::SharedPtr controlTimer;//Loop Control Timer
