@@ -34,13 +34,11 @@ struct config {
     const float KD = configFile["pid"]["KD"].as<float>();
     const float MIN = configFile["pid"]["MIN"].as<float>();
     const float MAX = configFile["pid"]["MAX"].as<float>();
-    const float STOP_DISTANCE = configFile["control"]["STOP_DISTANCE"].as<float>();
     const float STOP_THRESHOLD = configFile["control"]["STOP_THRESHOLD"].as<float>();
     const float TARGET_SPEED = configFile["control"]["TARGET_SPEED"].as<float>();
     const int CLOCK_MS = configFile["control"]["CLOCK_MS"].as<int>();
     const int MAX_CAN_TRIES = configFile["control"]["MAX_CAN_TRIES"].as<int>();
     const int MAX_PATH_AGE = configFile["control"]["MAX_PATH_AGE"].as<int>();
-    const float MAX_ACCEL = configFile["control"]["MAX_ACCEL"].as<float>();
     const float MAX_DECEL = configFile["control"]["MAX_DECEL"].as<float>();
     const float MAX_OUTPUT_STEP = configFile["control"]["MAX_OUTPUT_STEP"].as<float>();
 } config;
@@ -204,7 +202,7 @@ class ControlNode : public rclcpp::Node {
                 10
             );
 
-            havePath = brakeStart = stopDetected = missionFinished = false;
+            havePath = brakeStart = stopDetected = missionFinished = nearStop = false;
 
             currentOutput = 0;
 
@@ -221,9 +219,21 @@ class ControlNode : public rclcpp::Node {
         void getPath(const nav_msgs::msg::Path::SharedPtr msg) {
             //Everytime a new path "arrives", lastestPath gets updated also with the time of arrival
             if (!msg->poses.empty()) {
-                lastestPath.path = *msg;
-                havePath = true;
-                lastestPath.age = std::chrono::steady_clock::now();
+                std::vector<geometry_msgs::msg::PoseStamped> stopPoints;
+                std::copy_if( msg->poses.begin(), msg->poses.end(),
+                    std::back_inserter(stopPoints),
+                    [](const geometry_msgs::msg::PoseStamped& poseStamped) {
+                        return poseStamped.pose.position.z == 1;
+                    }
+                );
+
+                if (stopPoints.size() > 1) {nearStop = true;}
+
+                if (!nearStop || stopPoints.size() > 1 || msg->poses.size() == 1) {
+                    lastestPath.path = *msg;
+                    havePath = true;
+                    lastestPath.age = std::chrono::steady_clock::now();
+                }
             }
         }
 
@@ -247,10 +257,17 @@ class ControlNode : public rclcpp::Node {
             
             //Get the secondToLast pose, if the z value is 1.. The path contains the stopPoint
             } else if (lastestPath.path.poses.size() > 1) {
+                std::vector<geometry_msgs::msg::PoseStamped> stopPoints;
+                std::copy_if( lastestPath.path.poses.begin(), lastestPath.path.poses.end(),
+                    std::back_inserter(stopPoints),
+                    [](const geometry_msgs::msg::PoseStamped& poseStamped) {
+                    return poseStamped.pose.position.z == 1;
+                });
 
-                geometry_msgs::msg::PoseStamped secondToLastPose = lastestPath.path.poses[(int) lastestPath.path.poses.size() - 2];
-                distanceToStop = secondToLastPose.pose.position.x;
-                if ( secondToLastPose.pose.position.z == 1) {stopDetected = true;}
+                if (stopPoints.size() > 0) {
+                    distanceToStop = stopPoints[0].pose.position.x;
+                    stopDetected = true;
+                }
             } else {
                 distanceToStop = 0;
             }
@@ -334,7 +351,7 @@ class ControlNode : public rclcpp::Node {
         std::chrono::steady_clock::time_point startTime;
 
         LastestPath lastestPath;
-        bool havePath, brakeStart, stopDetected, missionFinished;
+        bool havePath, brakeStart, stopDetected, missionFinished, nearStop;
 
         float distanceToStop, currentOutput;
 

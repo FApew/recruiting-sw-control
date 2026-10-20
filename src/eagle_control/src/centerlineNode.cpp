@@ -84,9 +84,20 @@ class CenterlineNode : public rclcpp::Node {
             if (OrangeCones.size() % 2 == 0) {
                 //get the pairs, (1 or 2) and set the z to 1.. so it's easy for the ControlNode to
                 //know where the stopping point is
+
+                std::sort(OrangeCones.begin(), OrangeCones.end(),
+                    [](const auto& a, const auto& b) {
+                        return a.position.x < b.position.x;
+                    }
+                );
+
                 for (size_t i = 0; i < OrangeCones.size(); i+=2) {
                     geometry_msgs::msg::PoseStamped poseStamped;
                     poseStamped.header = msg->header;
+
+                    if (std::fabs(OrangeCones[i].position.x - OrangeCones[i+1].position.x) > config.CONES_MAX_X_OFFSET) {
+                        continue;
+                    }
 
                     poseStamped.pose.position.x = (float) (OrangeCones[i].position.x + OrangeCones[i+1].position.x) / 2;
                     poseStamped.pose.position.y = (float) (OrangeCones[i].position.y + OrangeCones[i+1].position.y) / 2;
