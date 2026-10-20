@@ -35,6 +35,7 @@ class CenterlineNode : public rclcpp::Node {
             );
         }
     private:
+        //NOTE - processCones Function
         void processCones(
             const eagle_msgs::msg::ConeArray::SharedPtr msg
         ) {
