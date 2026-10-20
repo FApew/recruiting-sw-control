@@ -18,10 +18,10 @@
 #include <rviz_2d_overlay_msgs/msg/overlay_text.hpp>
 
 //Path Object with Age value 
-typedef struct LastestPath {
+typedef struct latestPath {
     nav_msgs::msg::Path path;
     std::chrono::steady_clock::time_point age;
-} LastestPath;
+} latestPath;
 
 //NOTE - Config Init
 YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
@@ -217,7 +217,7 @@ class ControlNode : public rclcpp::Node {
     private: 
         //NOTE - getPath Function
         void getPath(const nav_msgs::msg::Path::SharedPtr msg) {
-            //Everytime a new path "arrives", lastestPath gets updated also with the time of arrival
+            //Everytime a new path "arrives", latestPath gets updated also with the time of arrival
             if (!msg->poses.empty()) {
                 std::vector<geometry_msgs::msg::PoseStamped> stopPoints;
                 std::copy_if( msg->poses.begin(), msg->poses.end(),
@@ -232,9 +232,9 @@ class ControlNode : public rclcpp::Node {
 
                 //If u spotted both stopping points once, if a path doesnt contain both now just discard it.
                 if (!nearStop || stopPoints.size() > 1 || msg->poses.size() == 1) {
-                    lastestPath.path = *msg;
+                    latestPath.path = *msg;
                     havePath = true;
-                    lastestPath.age = std::chrono::steady_clock::now();
+                    latestPath.age = std::chrono::steady_clock::now();
                 }
             }
         }
@@ -250,7 +250,7 @@ class ControlNode : public rclcpp::Node {
             }
 
             //If a path becomes "too old", so no updates for more than <config.MAX_PATH_AGE>, the car stops
-            if (std::chrono::duration<float>(std::chrono::steady_clock::now() - lastestPath.age).count()*1000 > config.MAX_PATH_AGE) {
+            if (std::chrono::duration<float>(std::chrono::steady_clock::now() - latestPath.age).count()*1000 > config.MAX_PATH_AGE) {
                 std::cout << "-------Path error ( Path got older than: " << config.MAX_PATH_AGE << "ms )-------" << std::endl;
 
                 controlTimer->cancel();
@@ -258,9 +258,9 @@ class ControlNode : public rclcpp::Node {
                 return;
             
             //Get the secondToLast pose, if the z value is 1.. The path contains the stopPoint
-            } else if (lastestPath.path.poses.size() > 1) {
+            } else if (latestPath.path.poses.size() > 1) {
                 std::vector<geometry_msgs::msg::PoseStamped> stopPoints;
-                std::copy_if( lastestPath.path.poses.begin(), lastestPath.path.poses.end(),
+                std::copy_if( latestPath.path.poses.begin(), latestPath.path.poses.end(),
                     std::back_inserter(stopPoints),
                     [](const geometry_msgs::msg::PoseStamped& poseStamped) {
                     return poseStamped.pose.position.z == 1;
@@ -314,8 +314,8 @@ class ControlNode : public rclcpp::Node {
             if (
                 speed < config.STOP_THRESHOLD && //Veichle goes close to 0m/s
                 stopDetected && //Stop was requested
-                lastestPath.path.poses.back().pose.position.z == 1 && //Still the last 2 orange cones are visible
-                lastestPath.path.poses.size() == 1 //Car only sees the last cones, so its inside the box
+                latestPath.path.poses.back().pose.position.z == 1 && //Still the last 2 orange cones are visible
+                latestPath.path.poses.size() == 1 //Car only sees the last cones, so its inside the box
             ) {
                 missionFinished = true;
 
@@ -352,7 +352,7 @@ class ControlNode : public rclcpp::Node {
         std::chrono::steady_clock::time_point pt; //PreviousTime
         std::chrono::steady_clock::time_point startTime;
 
-        LastestPath lastestPath;
+        latestPath latestPath;
         bool havePath, brakeStart, stopDetected, missionFinished, nearStop;
 
         float distanceToStop, currentOutput;
