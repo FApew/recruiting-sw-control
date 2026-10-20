@@ -39,10 +39,6 @@ ament_target_dependencies(controlNode
     rviz_2d_overlay_msgs
 )
 
-target_sources(controlNode PRIVATE
-    src/generated/eagle_task.c
-)
-
 target_link_libraries(controlNode yaml-cpp)
 target_link_libraries(centerlineNode yaml-cpp)
 

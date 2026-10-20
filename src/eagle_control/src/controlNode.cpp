@@ -227,8 +227,10 @@ class ControlNode : public rclcpp::Node {
                     }
                 );
 
+                //As soon as u spot both points set nearStop to true
                 if (stopPoints.size() > 1) {nearStop = true;}
 
+                //If u spotted both stopping points once, if a path doesnt contain both now just discard it.
                 if (!nearStop || stopPoints.size() > 1 || msg->poses.size() == 1) {
                     lastestPath.path = *msg;
                     havePath = true;

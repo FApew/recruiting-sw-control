@@ -66,8 +66,8 @@ The Rosbag in the `/record/control_run` folder took around _5.8s_. The directory
 
 <table>
   <tr>
-    <td><img src="https://media.discordapp.net/attachments/1086971255611215923/1562159027625005197/image.png?ex=6ad8f977&is=6ad7a7f7&hm=7750c182b62c5ffa63c67a5ef1f57c7f49ba6b6687e2a8d5d158fc6e1259b990&animated=true" width="400"></td>
-    <td><img src="https://cdn.discordapp.com/attachments/1086971255611215923/1562159072545869895/image.png?ex=6ad8f982&is=6ad7a802&hm=8b8d74a08860bd4d95214f42cff0bbe7b8bea5e6a24d5727979297da8c661dd4&animated=true" width="400"></td>
+    <td><img src="record/control_run/Speed-Target.png" width="400"></td>
+    <td><img src="record/control_run/Throttle-Brake.png" width="400"></td>
   </tr>
 </table>
 

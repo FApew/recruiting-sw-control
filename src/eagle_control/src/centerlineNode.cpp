@@ -82,15 +82,16 @@ class CenterlineNode : public rclcpp::Node {
 
             //Check if the number of Orange cones received is even (it's both 2 or 4)
             if (OrangeCones.size() % 2 == 0) {
-                //get the pairs, (1 or 2) and set the z to 1.. so it's easy for the ControlNode to
-                //know where the stopping point is
-
+                
+                //Sort orange cones array nearest to farthest
                 std::sort(OrangeCones.begin(), OrangeCones.end(),
                     [](const auto& a, const auto& b) {
                         return a.position.x < b.position.x;
                     }
                 );
 
+                //Get the pairs and set the z to 1.. so it's easy for the ControlNode to
+                //know where the stopping point is
                 for (size_t i = 0; i < OrangeCones.size(); i+=2) {
                     geometry_msgs::msg::PoseStamped poseStamped;
                     poseStamped.header = msg->header;
