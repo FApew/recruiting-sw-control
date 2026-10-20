@@ -12,8 +12,9 @@
 
 #include <net/if.h> //network lookup
 
+//NOTE - CanInterface Contructor
 CanInterface::CanInterface(const std::string& interfaceName) {
-    //Socket creation -- Protocol Family -- CAN Frames -- Raw CAN Protocol
+    //Socket creation socket(Protocol Family, CAN Frames, CAN Protocol)
     socketFd_ = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 
     if (socketFd_ < 0) { //socket() returns -1 on failure
@@ -27,17 +28,19 @@ CanInterface::CanInterface(const std::string& interfaceName) {
         throw std::runtime_error("CAN Interface Idx not found");
     }
 
-    struct sockaddr_can address{}; //Inizializza a zero tutto lo struct
+    struct sockaddr_can address{};
     address.can_family = AF_CAN; //CAN endpoint
     address.can_ifindex = interfaceIdx;
 
-    //Associa il socket all'interfaccia di "vcan0", pos converte da pointer "sockaddr_can*" a "sockaddr*"
+    //Associa il socket all'interfaccia di "vcan0", poi converte da pointer "sockaddr_can*"
+    //quindi il tipo che ha ora address, a "sockaddr*"
     if (bind(socketFd_, reinterpret_cast<const struct sockaddr*>(&address), sizeof(address)) < 0) {
         close(socketFd_);
         throw std::runtime_error("Bind del CANe non riuscito");
     }
 }
 
+//NOTE - CanInterface::sendFrame Function
 void CanInterface::sendFrame(const can_frame& frame) {
     ssize_t writtenBytes = write(socketFd_, &frame, sizeof(frame));
 
@@ -49,12 +52,12 @@ void CanInterface::sendFrame(const can_frame& frame) {
         );
     }
 
-    //Controllo se quello che mando è = a quello che effettivamente voglio mandare
     if (writtenBytes != sizeof(frame)) { 
         throw std::runtime_error("Frame size doesn't match");
     }
 }
 
+//NOTE - CanInterface::receiveFrame Function
 void CanInterface::receiveFrame(can_frame& frame) {
     ssize_t receivedBytes = read(socketFd_, &frame, sizeof(frame));
 
@@ -66,12 +69,12 @@ void CanInterface::receiveFrame(can_frame& frame) {
         );
     }
 
-    //Controllo se quello che mando è = a quello che effettivamente voglio mandare
     if (receivedBytes != sizeof(frame)) { 
         throw std::runtime_error("Frame size doesn't match");
     }
 }
 
+//NOTE - CanInterface Destructor
 CanInterface::~CanInterface() {
     if (socketFd_ >= 0) {
         close(socketFd_);

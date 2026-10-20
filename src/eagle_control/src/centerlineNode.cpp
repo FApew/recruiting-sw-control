@@ -5,25 +5,30 @@
 #include <yaml-cpp/yaml.h>
 #include <cmath>
 
+//NOTE - Config Init
 YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
 
 struct config {
     const float CONES_MAX_X_OFFSET = configFile["path"]["CONES_MAX_X_OFFSET"].as<float>();
 } config;
 
+//SECTION - CenterlineNode Class
 class CenterlineNode : public rclcpp::Node {
     public:
+        //NOTE - Constructor
         CenterlineNode() : Node("CenterlineNode") {
+            //Subscriber to "/perception/cones"
             coneSubscriber = create_subscription<eagle_msgs::msg::ConeArray>(
                 "/perception/cones",
                 10,
                 std::bind(
-                    &CenterlineNode::processCones,
+                    &CenterlineNode::processCones, //Run processCones() every update received
                     this,
                     std::placeholders::_1
                 )
             );
 
+            //Path publisher
             pathPublisher = create_publisher<nav_msgs::msg::Path>(
                 "/planning/centerline",
                 10
@@ -38,6 +43,7 @@ class CenterlineNode : public rclcpp::Node {
             nav_msgs::msg::Path path;
             path.header = msg->header;
 
+            //Divide the cones to left, right and OrangeCones
             for (size_t i = 0; i < msg->cones.size(); i++) {
                 const eagle_msgs::msg::Cone &cone = msg->cones[i];
 
@@ -50,16 +56,18 @@ class CenterlineNode : public rclcpp::Node {
                 }
             }
        
-            bool pair = false;
+            //Pair cones only with horizontal distance less than <config.CONES_MAX_X_OFFSET> to allow an offset
+            bool pair;
             for (size_t i = 0; i < leftCones.size(); i++) {
                 pair = false;
 
                 for (size_t j = 0; j < rightCones.size() && !pair; j++) {
                     if (std::fabs(leftCones[i].position.x - rightCones[j].position.x) < config.CONES_MAX_X_OFFSET) {
+                        //Generate poseStamped and push it back into path
                         geometry_msgs::msg::PoseStamped poseStamped;
                         poseStamped.header = msg->header;
 
-                        poseStamped.pose.position.x = leftCones[i].position.x;
+                        poseStamped.pose.position.x = (float) (leftCones[i].position.x + rightCones[j].position.x) / 2;
                         poseStamped.pose.position.y = (float) (leftCones[i].position.y + rightCones[j].position.y) / 2;
                         poseStamped.pose.position.z = 0;
 
@@ -72,7 +80,10 @@ class CenterlineNode : public rclcpp::Node {
                 }
             }
 
+            //Check if the number of Orange cones received is even (it's both 2 or 4)
             if (OrangeCones.size() % 2 == 0) {
+                //get the pairs, (1 or 2) and set the z to 1.. so it's easy for the ControlNode to
+                //know where the stopping point is
                 for (size_t i = 0; i < OrangeCones.size(); i+=2) {
                     geometry_msgs::msg::PoseStamped poseStamped;
                     poseStamped.header = msg->header;
@@ -93,7 +104,9 @@ class CenterlineNode : public rclcpp::Node {
     rclcpp::Subscription<eagle_msgs::msg::ConeArray>::SharedPtr coneSubscriber;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pathPublisher;
 };
+//!SECTION
 
+//NOTE - main Function
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
 
@@ -102,6 +115,5 @@ int main(int argc, char **argv) {
     rclcpp::spin(node);
 
     rclcpp::shutdown();
-
     return 0;
 }

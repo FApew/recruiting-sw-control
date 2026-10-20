@@ -9,7 +9,7 @@ class CanInterface {
         explicit CanInterface(const std::string& interfaceName); //Constructor
         ~CanInterface(); //Destructor
 
-        //Impedisce la copia
+        //Forbid to have 2 obj with the same name and sockedFd
         CanInterface(const CanInterface&) = delete;
         CanInterface& operator=(const CanInterface&) = delete;
 
@@ -18,7 +18,7 @@ class CanInterface {
         void receiveFrame(can_frame& frame);
 
     private:
-        int socketFd_{-1}; //If the constructor non modifica il valore, allora lui lo setta a -1
+        int socketFd_{-1}; //Sets the value -1 if untouched inside the construtor before its first read
 };
 
 #endif

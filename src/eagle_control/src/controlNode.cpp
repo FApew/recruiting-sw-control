@@ -17,11 +17,13 @@
 #include <std_msgs/msg/float64.hpp>
 #include <rviz_2d_overlay_msgs/msg/overlay_text.hpp>
 
+//Path Object with Age value 
 typedef struct LastestPath {
     nav_msgs::msg::Path path;
     std::chrono::steady_clock::time_point age;
 } LastestPath;
 
+//NOTE - Config Init
 YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
 
 struct config {
@@ -44,10 +46,14 @@ struct config {
 
 CanInterface can("vcan0");
 
+//SECTION - Private Functions
+
+//NOTE - GetSpeed Function
 bool getSpeed(float *speed) {
     struct can_frame frame{};
     bool receivedSpeed = false;
 
+    //Wait and scan the first <config.MAX_CAN_TRIES> to receive VECH_SPEED
     for (int o = 0; o < config.MAX_CAN_TRIES && receivedSpeed == false; o++) {
         can.receiveFrame(frame);
         if (frame.can_id == EAGLE_TASK_VEH_SPEED_FRAME_ID) receivedSpeed = true;
@@ -56,11 +62,13 @@ bool getSpeed(float *speed) {
     if (receivedSpeed) {
         struct eagle_task_veh_speed_t decoded{};
 
+        //Decode the speed usin the generated code
         const int result = eagle_task_veh_speed_unpack(&decoded, frame.data, frame.can_dlc);
 
         if (result < 0) {
             return false;
         } else {
+            //Assign the speed to the pointer given as an arg
             *speed = (float) eagle_task_veh_speed_vehicle_speed_decode(decoded.vehicle_speed);
             return true;
         }
@@ -69,9 +77,11 @@ bool getSpeed(float *speed) {
     }
 }
 
+//NOTE - sendCommand Function
 void sendCommand(float throttle, float brake, bool missionFinished) {
     struct eagle_task_as_cmd_t command{};
 
+    //Encode throttle brake and mission_finished
     command.throttle_req = eagle_task_as_cmd_throttle_req_encode(throttle);
 
     command.brake_req = eagle_task_as_cmd_brake_req_encode(brake);
@@ -89,13 +99,16 @@ void sendCommand(float throttle, float brake, bool missionFinished) {
         return;
     }
 
+    //Send the frame to vCAN
     can.sendFrame(frame);
 }
 
+//NOTE - getOverlay Function
 rviz_2d_overlay_msgs::msg::OverlayText getOverlay(
     float speed, float target, float PIDout, 
     float throttle, float brake
 ) {
+    //Generate the overlay shown in Rviz UI to debug
     rviz_2d_overlay_msgs::msg::OverlayText msg;
 
     msg.action = 0;
@@ -135,11 +148,15 @@ rviz_2d_overlay_msgs::msg::OverlayText getOverlay(
 
     return msg;
 }
+//!SECTION
 
+//SECTION - ControlNode Main Class
 class ControlNode : public rclcpp::Node {
     public:
+        //NOTE - Constructor
         ControlNode() : Node("ControlNode"),
-        pid(config.KP, config.KI, config.KD, config.MIN, config.MAX) {
+        pid(config.KP, config.KI, config.KD, config.MIN, config.MAX) { //Also build the pidController obj
+            //Subscribe to Centerline Path
             pathSub = create_subscription<nav_msgs::msg::Path>(
                 "/planning/centerline",
                 10,
@@ -150,6 +167,7 @@ class ControlNode : public rclcpp::Node {
                 )
             );
 
+            //Create all the publishers for both Rosbag & plots and Debugging
             debugPub = create_publisher<rviz_2d_overlay_msgs::msg::OverlayText>(
                 "/control/debug",
                 10
@@ -177,6 +195,7 @@ class ControlNode : public rclcpp::Node {
 
             havePath = stopRequested = stopDetected = false;
 
+            //Creation of the control timer to run mainLoop() every <config.CLOCK_MS> ms
             controlTimer = create_wall_timer(
                 std::chrono::milliseconds(config.CLOCK_MS),
                 std::bind(&ControlNode::mainLoop, this)
@@ -185,7 +204,9 @@ class ControlNode : public rclcpp::Node {
             pt = startTime = std::chrono::steady_clock::now();
         }
     private: 
+        //NOTE - getPath Function
         void getPath(const nav_msgs::msg::Path::SharedPtr msg) {
+            //Everytime a new path "arrives", lastestPath gets updated also with the time of arrival
             if (!msg->poses.empty()) {
                 lastestPath.path = *msg;
                 havePath = true;
@@ -193,17 +214,21 @@ class ControlNode : public rclcpp::Node {
             }
         }
 
+        //NOTE - mainLoop
         void mainLoop() {
             if (!havePath) return;
 
+            //If a path becomes "too old", so no updates for more than <config.MAX_PATH_AGE>, the car stops
             if (std::chrono::duration<float>(std::chrono::steady_clock::now() - lastestPath.age).count()*1000 > config.MAX_PATH_AGE) {
                 std::cout << "-------Path error (returned path is empty)-------" << std::endl;
 
                 controlTimer->cancel();
                 rclcpp::shutdown();
                 return;
-
+            
+            //Get the secondToLast pose, if the z value is 1.. The path contains the stopPoint
             } else if (lastestPath.path.poses.size() > 1) {
+
                 geometry_msgs::msg::PoseStamped secondToLastPose = lastestPath.path.poses[(int) lastestPath.path.poses.size() - 2];
                 distanceToStop = secondToLastPose.pose.position.x;
                 if ( secondToLastPose.pose.position.z == 1) {stopDetected = true;}
@@ -211,15 +236,15 @@ class ControlNode : public rclcpp::Node {
                 distanceToStop = 0;
             }
 
+            //Reset the PID before braking, mainly because of the Integral Error
             if (stopDetected && !stopRequested) {
                 stopRequested = true; 
                 pid.reset();
             }
 
-            rviz_2d_overlay_msgs::msg::OverlayText debugOverlay;
-
+            //Get current speed by passing the pointer.. 
             float speed;
-            if (!getSpeed(&speed)) {
+            if (!getSpeed(&speed)) {//If getSpeed() returns false -> Bad Reading error or no speed at all
                 std::cout << "-------Speed error (Speed sensor broke or smth)-------" << std::endl;
 
                 controlTimer->cancel();
@@ -227,15 +252,18 @@ class ControlNode : public rclcpp::Node {
                 return;
             };
 
+            //Get target speed
             float target;
-            if (!stopRequested) {
+            if (!stopRequested) { //<config.TARGET_SPEED> durin acceleration
                 target = config.TARGET_SPEED;
-            } else {
+            } else { //Formula to calculate fullStop distance
                 target = std::sqrt(2 * config.MAX_DECEL * distanceToStop);
             }
 
+            //DeltaTime usin std::chrono
             const float dt = std::chrono::duration<float>(std::chrono::steady_clock::now() - pt).count();
 
+            //Reading of PIDout and conversion to throttle and brake
             const float PIDout = pid.getPIDoutput(target, speed, dt);
 
             const float throttle = PIDout > 0 ? PIDout : 0;
@@ -244,21 +272,21 @@ class ControlNode : public rclcpp::Node {
             sendCommand(throttle, brake, false);
 
             if (
-                speed < config.STOP_THRESHOLD && 
-                stopRequested &&
-                lastestPath.path.poses.back().pose.position.z == 1
+                speed < config.STOP_THRESHOLD && //Veichle goes close to 0m/s
+                stopRequested && //Stop was requested
+                lastestPath.path.poses.back().pose.position.z == 1 && //Still the last 2 orange cones are visible
+                lastestPath.path.poses.size() == 1 //Car only sees the last cones, so its inside the box
             ) {
-                sendCommand(0, 0, true);
+                sendCommand(0, 0, true); //Mission Finished
                 std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
                 controlTimer->cancel();
                 rclcpp::shutdown();
                 return;
             }
 
-            pt = std::chrono::steady_clock::now();
-
+            //Publishers
+            rviz_2d_overlay_msgs::msg::OverlayText debugOverlay;
             debugOverlay = getOverlay(speed, target, PIDout, throttle, brake);
-
             debugPub->publish(debugOverlay);
             
             std_msgs::msg::Float64 speedMsg;
@@ -276,11 +304,14 @@ class ControlNode : public rclcpp::Node {
             std_msgs::msg::Float64 brakeMsg;
             brakeMsg.data = brake;
             brakePub->publish(brakeMsg);
+
+            //Store previous loop time
+            pt = std::chrono::steady_clock::now();
         }
 
-        rclcpp::TimerBase::SharedPtr controlTimer;
+        rclcpp::TimerBase::SharedPtr controlTimer;//Loop Control Timer
 
-        std::chrono::steady_clock::time_point pt;
+        std::chrono::steady_clock::time_point pt; //PreviousTime
         std::chrono::steady_clock::time_point startTime;
 
         LastestPath lastestPath;
@@ -292,9 +323,11 @@ class ControlNode : public rclcpp::Node {
         rclcpp::Publisher<rviz_2d_overlay_msgs::msg::OverlayText>::SharedPtr debugPub;
         rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr speedPub, targetPub, throttlePub, brakePub;
 
-        PIDcontroller pid;
+        PIDcontroller pid; //pid object
 };
+//!SECTION
 
+//NOTE - main Function
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
 

@@ -16,7 +16,7 @@ class PIDcontroller {
     private:
         float kp, ki, kd, min, max;
 
-        float dE, iE, pE; //Deriv - Integ - Previous
+        float dE, iE, pE; //Derivate - Integral - PreviousError
 
         bool firstOutput;
 };
