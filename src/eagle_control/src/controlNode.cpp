@@ -18,10 +18,10 @@
 #include <rviz_2d_overlay_msgs/msg/overlay_text.hpp>
 
 //Path Object with Age value 
-typedef struct latestPath {
+typedef struct LatestPath {
     nav_msgs::msg::Path path;
     std::chrono::steady_clock::time_point age;
-} latestPath;
+} LatestPath;
 
 //NOTE - Config Init
 YAML::Node configFile = YAML::LoadFile("/home/eagle/ws/config/config.yaml");
@@ -352,7 +352,7 @@ class ControlNode : public rclcpp::Node {
         std::chrono::steady_clock::time_point pt; //PreviousTime
         std::chrono::steady_clock::time_point startTime;
 
-        latestPath latestPath;
+        LatestPath latestPath;
         bool havePath, brakeStart, stopDetected, missionFinished, nearStop;
 
         float distanceToStop, currentOutput;
