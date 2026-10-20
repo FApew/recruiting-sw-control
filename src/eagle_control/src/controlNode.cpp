@@ -42,6 +42,7 @@ struct config {
     const int MAX_PATH_AGE = configFile["control"]["MAX_PATH_AGE"].as<int>();
     const float MAX_ACCEL = configFile["control"]["MAX_ACCEL"].as<float>();
     const float MAX_DECEL = configFile["control"]["MAX_DECEL"].as<float>();
+    const float MAX_OUTPUT_STEP = configFile["control"]["MAX_OUTPUT_STEP"].as<float>();
 } config;
 
 CanInterface can("vcan0");
@@ -148,6 +149,16 @@ rviz_2d_overlay_msgs::msg::OverlayText getOverlay(
 
     return msg;
 }
+
+//NOTE - rateLimiter Function
+void rateLimiter(float target, float *current, float maxStep) {
+    float dS = target - *current;
+
+    if (dS > maxStep) {*current += maxStep; return;}
+    if (dS < -maxStep) {*current -= maxStep; return;}
+    *current = target; return;
+}
+
 //!SECTION
 
 //SECTION - ControlNode Main Class
@@ -193,7 +204,9 @@ class ControlNode : public rclcpp::Node {
                 10
             );
 
-            havePath = stopRequested = stopDetected = false;
+            havePath = brakeStart = stopDetected = missionFinished = false;
+
+            currentOutput = 0;
 
             //Creation of the control timer to run mainLoop() every <config.CLOCK_MS> ms
             controlTimer = create_wall_timer(
@@ -220,7 +233,7 @@ class ControlNode : public rclcpp::Node {
 
             //If a path becomes "too old", so no updates for more than <config.MAX_PATH_AGE>, the car stops
             if (std::chrono::duration<float>(std::chrono::steady_clock::now() - lastestPath.age).count()*1000 > config.MAX_PATH_AGE) {
-                std::cout << "-------Path error (returned path is empty)-------" << std::endl;
+                std::cout << "-------Path error ( Path got older than: " << config.MAX_PATH_AGE << "ms )-------" << std::endl;
 
                 controlTimer->cancel();
                 rclcpp::shutdown();
@@ -236,12 +249,6 @@ class ControlNode : public rclcpp::Node {
                 distanceToStop = 0;
             }
 
-            //Reset the PID before braking, mainly because of the Integral Error
-            if (stopDetected && !stopRequested) {
-                stopRequested = true; 
-                pid.reset();
-            }
-
             //Get current speed by passing the pointer.. 
             float speed;
             if (!getSpeed(&speed)) {//If getSpeed() returns false -> Bad Reading error or no speed at all
@@ -254,10 +261,16 @@ class ControlNode : public rclcpp::Node {
 
             //Get target speed
             float target;
-            if (!stopRequested) { //<config.TARGET_SPEED> durin acceleration
+            if (!stopDetected) { //<config.TARGET_SPEED> durin acceleration
                 target = config.TARGET_SPEED;
             } else { //Formula to calculate fullStop distance
                 target = std::sqrt(2 * config.MAX_DECEL * distanceToStop);
+            }
+
+            //Reset the PID before braking, mainly because of the Integral Error
+            if (stopDetected && !brakeStart && target < speed) {
+                brakeStart = true; 
+                pid.reset();
             }
 
             //DeltaTime usin std::chrono
@@ -266,22 +279,23 @@ class ControlNode : public rclcpp::Node {
             //Reading of PIDout and conversion to throttle and brake
             const float PIDout = pid.getPIDoutput(target, speed, dt);
 
-            const float throttle = PIDout > 0 ? PIDout : 0;
-            const float brake = PIDout < 0 ? -PIDout : 0;
+            rateLimiter(PIDout, &currentOutput, config.MAX_OUTPUT_STEP);
+
+            const float throttle = currentOutput > 0 ? currentOutput : 0;
+            const float brake = currentOutput < 0 ? -currentOutput : 0;
 
             sendCommand(throttle, brake, false);
 
             if (
                 speed < config.STOP_THRESHOLD && //Veichle goes close to 0m/s
-                stopRequested && //Stop was requested
+                stopDetected && //Stop was requested
                 lastestPath.path.poses.back().pose.position.z == 1 && //Still the last 2 orange cones are visible
                 lastestPath.path.poses.size() == 1 //Car only sees the last cones, so its inside the box
             ) {
                 sendCommand(0, 0, true); //Mission Finished
+                missionFinished = true;
+
                 std::cout << "-------Elapsed time: " << std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count() << "-------" << std::endl;
-                controlTimer->cancel();
-                rclcpp::shutdown();
-                return;
             }
 
             //Publishers
@@ -307,6 +321,12 @@ class ControlNode : public rclcpp::Node {
 
             //Store previous loop time
             pt = std::chrono::steady_clock::now();
+
+            if (missionFinished) {
+                controlTimer->cancel();
+                rclcpp::shutdown();
+                return;
+            }
         }
 
         rclcpp::TimerBase::SharedPtr controlTimer;//Loop Control Timer
@@ -315,9 +335,9 @@ class ControlNode : public rclcpp::Node {
         std::chrono::steady_clock::time_point startTime;
 
         LastestPath lastestPath;
-        bool havePath, stopRequested, stopDetected;
+        bool havePath, brakeStart, stopDetected, missionFinished;
 
-        float distanceToStop;
+        float distanceToStop, currentOutput;
 
         rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr pathSub;
         rclcpp::Publisher<rviz_2d_overlay_msgs::msg::OverlayText>::SharedPtr debugPub;
